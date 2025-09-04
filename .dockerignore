@@ -1,0 +1,45 @@
+# Exclude frontend directory
+frontend/
+
+# Exclude database directory
+database/
+
+# Exclude virtual environment
+.venv/
+venv/
+
+#extra files
+test_api.py
+
+# Exclude Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Exclude git
+.git/
+.gitignore
+
+# Exclude environment files
+.env
+.env.local
+.env.*.local
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Exclude OS files
+.DS_Store
+Thumbs.db
+
+# Exclude logs
+*.log
+
+# Exclude test files (optional - remove if you want to include tests)
+test_*.py
+*_test.py

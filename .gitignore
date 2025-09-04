@@ -1,0 +1,5 @@
+.venv
+test_api.py
+.env
+frontend
+.database
