@@ -62,7 +62,6 @@ async def startup_event():
         print(f"Warning: RAG system initialization failed: {e}")
 
 @app.get("/", response_model=HealthCheckResponse)
-@app.head("/")
 async def root():
     """Root endpoint with health check"""
     return HealthCheckResponse(
@@ -71,8 +70,12 @@ async def root():
         timestamp=datetime.now().isoformat()
     )
 
+@app.head("/")
+async def root_head():
+    """Root endpoint HEAD handler for health checks"""
+    return None
+
 @app.get("/health", response_model=HealthCheckResponse)
-@app.head("/health")
 async def health_check():
     """Health check endpoint"""
     try:
@@ -89,6 +92,17 @@ async def health_check():
             message=f"System error: {str(e)}",
             timestamp=datetime.now().isoformat()
         )
+
+@app.head("/health")
+async def health_check_head():
+    """Health check HEAD handler"""
+    try:
+        # Quick check if RAG system is accessible
+        get_rag_system()
+        return None  # HEAD requests should return no body
+    except Exception:
+        # Let the exception propagate to return 500 status
+        raise
 
 @app.get("/api/documents/all")
 async def get_all_documents(rag_sys: RAGSystem = Depends(get_rag_system)):
