@@ -2,4 +2,5 @@
 test_api.py
 .env
 frontend
-.database
+database
+__pycache__

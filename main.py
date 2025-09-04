@@ -25,10 +25,17 @@ app = FastAPI(
 # Add CORS middleware for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly for production
+    allow_origins="https://rag-ai-chatbot-frontend.vercel.app/",
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=[
+        'Content-Type',
+        'Authorization',
+        'ngrok-skip-browser-warning',
+        'Accept',
+        'Origin',
+        'X-Requested-With'
+    ],
 )
 
 # Global RAG system instance
