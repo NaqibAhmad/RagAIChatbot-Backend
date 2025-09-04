@@ -62,6 +62,7 @@ async def startup_event():
         print(f"Warning: RAG system initialization failed: {e}")
 
 @app.get("/", response_model=HealthCheckResponse)
+@app.head("/")
 async def root():
     """Root endpoint with health check"""
     return HealthCheckResponse(
@@ -71,6 +72,7 @@ async def root():
     )
 
 @app.get("/health", response_model=HealthCheckResponse)
+@app.head("/health")
 async def health_check():
     """Health check endpoint"""
     try:
