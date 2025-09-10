@@ -47,16 +47,6 @@ app.add_middleware(
 LICENSE_KEY = os.getenv("LICENSE_KEY", "demo-license-123")
 
 # Middleware to enforce license on all /api routes
-@app.middleware("http")
-async def license_middleware(request: Request, call_next):
-    if request.method == "OPTIONS":
-        return await call_next(request)  # allow CORS preflight
-    if request.url.path.startswith("/api/"):
-        provided = request.headers.get("x-license-key")
-        if provided != LICENSE_KEY:
-            return JSONResponse(status_code=401, content={"detail": "Invalid or missing license key"})
-    return await call_next(request)
-
 @app.middleware("https")
 async def license_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
@@ -66,7 +56,6 @@ async def license_middleware(request: Request, call_next):
         if provided != LICENSE_KEY:
             return JSONResponse(status_code=401, content={"detail": "Invalid or missing license key"})
     return await call_next(request)
-
 
 # Global RAG system instance
 rag_system = None
