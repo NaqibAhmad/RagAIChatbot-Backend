@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
@@ -25,7 +25,12 @@ app = FastAPI(
 # Add CORS middleware for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins="https://rag-ai-chatbot-frontend.vercel.app/",
+    allow_origins=[
+        "https://rag-ai-chatbot-frontend.vercel.app/",
+        "http://localhost:3001",
+        "http://localhost:5173",
+        "http://localhost:3000"
+        ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=[
@@ -34,9 +39,34 @@ app.add_middleware(
         'ngrok-skip-browser-warning',
         'Accept',
         'Origin',
-        'X-Requested-With'
+        'X-Requested-With',
+        'X-License-Key'
     ],
 )
+# Simple license key (non-expiring) loaded from env or default
+LICENSE_KEY = os.getenv("LICENSE_KEY", "demo-license-123")
+
+# Middleware to enforce license on all /api routes
+@app.middleware("http")
+async def license_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)  # allow CORS preflight
+    if request.url.path.startswith("/api/"):
+        provided = request.headers.get("x-license-key")
+        if provided != LICENSE_KEY:
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing license key"})
+    return await call_next(request)
+
+@app.middleware("https")
+async def license_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)  # allow CORS preflight
+    if request.url.path.startswith("/api/"):
+        provided = request.headers.get("x-license-key")
+        if provided != LICENSE_KEY:
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing license key"})
+    return await call_next(request)
+
 
 # Global RAG system instance
 rag_system = None
