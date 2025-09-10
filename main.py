@@ -26,28 +26,19 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://rag-ai-chatbot-frontend.vercel.app/",
-        # "http://localhost:3001",
-        # "http://localhost:5173",
-        # "http://localhost:3000"
-        ],
+        "https://rag-ai-chatbot-frontend.vercel.app",
+        # "http://localhost:3000",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=[
-        'Content-Type',
-        'Authorization',
-        'ngrok-skip-browser-warning',
-        'Accept',
-        'Origin',
-        'X-Requested-With',
-        'X-License-Key'
-    ],
+    allow_headers=["*"],
 )
 # Simple license key (non-expiring) loaded from env or default
 LICENSE_KEY = os.getenv("LICENSE_KEY", "demo-license-123")
 
 # Middleware to enforce license on all /api routes
-@app.middleware("https")
+@app.middleware("http")
 async def license_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)  # allow CORS preflight
