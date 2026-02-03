@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 import uuid
+from contextlib import asynccontextmanager
 
 from src.customTypes import RAGRequest, RAGResponse, HealthCheckResponse, DocumentUploadResponse
 from src.rag import rag
@@ -13,13 +14,33 @@ from src.ragUtils import RAGSystem
 # Load environment variables
 load_dotenv()
 
-# Initialize FastAPI app
+# Global RAG system instance
+rag_system = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown"""
+    # Startup
+    global rag_system
+    try:
+        rag_system = RAGSystem(persist_directory="./database")
+        print("RAG system initialized successfully")
+    except Exception as e:
+        print(f"Warning: RAG system initialization failed: {e}")
+    
+    yield
+    
+    # Shutdown (if needed)
+    # Cleanup code can go here
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="RAG Healthcare API",
     description="FastAPI middleware for RAG-based healthcare appointment system",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Add CORS middleware for frontend communication
@@ -27,9 +48,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://rag-ai-chatbot-frontend.vercel.app",
-        # "http://localhost:3000",
+        "http://localhost:3000",
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,13 +63,19 @@ async def license_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)  # allow CORS preflight
     if request.url.path.startswith("/api/"):
-        provided = request.headers.get("x-license-key")
+        # Check for license key header (case-insensitive)
+        provided = None
+        for header_name, header_value in request.headers.items():
+            if header_name.lower() == "x-license-key":
+                provided = header_value
+                break
+        
         if provided != LICENSE_KEY:
-            return JSONResponse(status_code=401, content={"detail": "Invalid or missing license key"})
+            return JSONResponse(
+                status_code=401, 
+                content={"detail": "Invalid or missing license key"}
+            )
     return await call_next(request)
-
-# Global RAG system instance
-rag_system = None
 
 def get_rag_system():
     """Dependency to get RAG system instance"""
@@ -60,16 +86,6 @@ def get_rag_system():
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to initialize RAG system: {str(e)}")
     return rag_system
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup"""
-    global rag_system
-    try:
-        rag_system = RAGSystem(persist_directory="./database")
-        print("RAG system initialized successfully")
-    except Exception as e:
-        print(f"Warning: RAG system initialization failed: {e}")
 
 @app.get("/", response_model=HealthCheckResponse)
 async def root():
