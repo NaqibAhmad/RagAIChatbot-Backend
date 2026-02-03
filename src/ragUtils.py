@@ -217,6 +217,10 @@ class RAGSystem:
     def delete_session_documents(self, session_id: str) -> int:
         """Delete all documents for a specific session"""
         try:
+            # Handle "Unknown" session ID - this means documents without a session_id
+            if session_id == "Unknown":
+                return self._delete_documents_without_session_id()
+            
             vectordb = Chroma(persist_directory=self.persist_directory, embedding_function=self.embedding)
             all_docs = vectordb.get()
             
@@ -243,6 +247,68 @@ class RAGSystem:
             
         except Exception as e:
             print(f"Error deleting session documents: {e}")
+            return 0
+    
+    def _delete_documents_without_session_id(self) -> int:
+        """Delete all documents that don't have a session_id in metadata"""
+        try:
+            vectordb = Chroma(persist_directory=self.persist_directory, embedding_function=self.embedding)
+            all_docs = vectordb.get()
+            
+            if not all_docs or 'metadatas' not in all_docs:
+                return 0
+            
+            # Find indices of documents without session_id
+            indices_to_delete = []
+            for i, metadata in enumerate(all_docs['metadatas']):
+                if not metadata or not metadata.get('session_id') or metadata.get('session_id') == 'Unknown':
+                    indices_to_delete.append(i)
+            
+            if indices_to_delete:
+                # Delete documents by index
+                vectordb.delete(ids=[all_docs['ids'][i] for i in indices_to_delete])
+                
+                # Reinitialize retriever
+                self.retriever = self.initialize_hybrid_retriever()
+                
+                print(f"Deleted {len(indices_to_delete)} documents without session_id")
+                return len(indices_to_delete)
+            
+            return 0
+            
+        except Exception as e:
+            print(f"Error deleting documents without session_id: {e}")
+            return 0
+    
+    def delete_documents_by_file_name(self, file_name: str) -> int:
+        """Delete all documents (chunks) for a specific file name across all sessions"""
+        try:
+            vectordb = Chroma(persist_directory=self.persist_directory, embedding_function=self.embedding)
+            all_docs = vectordb.get()
+            
+            if not all_docs or 'metadatas' not in all_docs:
+                return 0
+            
+            # Find indices of documents to delete by file name
+            indices_to_delete = []
+            for i, metadata in enumerate(all_docs['metadatas']):
+                if metadata and metadata.get('file_name') == file_name:
+                    indices_to_delete.append(i)
+            
+            if indices_to_delete:
+                # Delete documents by index
+                vectordb.delete(ids=[all_docs['ids'][i] for i in indices_to_delete])
+                
+                # Reinitialize retriever
+                self.retriever = self.initialize_hybrid_retriever()
+                
+                print(f"Deleted {len(indices_to_delete)} documents for file {file_name}")
+                return len(indices_to_delete)
+            
+            return 0
+            
+        except Exception as e:
+            print(f"Error deleting documents by file name: {e}")
             return 0
 
     def get_all_documents(self) -> List[dict]:

@@ -334,6 +334,35 @@ async def delete_session_documents(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete session documents: {str(e)}")
 
+@app.delete("/api/documents/file/{file_name:path}")
+async def delete_documents_by_file_name(
+    file_name: str,
+    rag_sys: RAGSystem = Depends(get_rag_system)
+):
+    """Delete all documents (chunks) for a specific file name across all sessions"""
+    try:
+        # URL decode the file name in case it contains special characters
+        import urllib.parse
+        file_name = urllib.parse.unquote(file_name)
+        
+        deleted_count = rag_sys.delete_documents_by_file_name(file_name)
+        if deleted_count == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No documents found with file name: {file_name}"
+            )
+        
+        return {
+            "message": f"Deleted {deleted_count} documents for file {file_name}",
+            "deleted_count": deleted_count,
+            "file_name": file_name,
+            "timestamp": datetime.now().isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete documents by file name: {str(e)}")
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler for unhandled errors"""
