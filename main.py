@@ -49,32 +49,56 @@ app.add_middleware(
     allow_origins=[
         "https://rag-ai-chatbot-frontend.vercel.app",
         "http://localhost:3000",
+        "http://localhost:5173",  # Vite default port
     ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-License-Key", "x-license-key"],  # Explicitly allow license key header
+    expose_headers=["*"],
 )
+
 # Simple license key (non-expiring) loaded from env or default
 LICENSE_KEY = os.getenv("LICENSE_KEY", "demo-license-123")
+
+# Development mode - set DISABLE_LICENSE_CHECK=true to bypass license validation
+DISABLE_LICENSE_CHECK = os.getenv("DISABLE_LICENSE_CHECK", "false").lower() == "true"
 
 # Middleware to enforce license on all /api routes
 @app.middleware("http")
 async def license_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)  # allow CORS preflight
+    
     if request.url.path.startswith("/api/"):
-        # Check for license key header (case-insensitive)
-        provided = None
-        for header_name, header_value in request.headers.items():
-            if header_name.lower() == "x-license-key":
-                provided = header_value
-                break
+        # Skip license check in development mode
+        if DISABLE_LICENSE_CHECK:
+            print("WARNING: License check is DISABLED (development mode)")
+            return await call_next(request)
+        
+        # Use FastAPI's header access which handles case-insensitivity properly
+        # FastAPI/Starlette headers.get() is case-insensitive, so this should work
+        provided = request.headers.get("x-license-key")
+        
+        # Debug logging (remove in production if needed)
+        if not provided:
+            print(f"DEBUG: No license key header found. Available headers: {list(request.headers.keys())}")
+            print(f"DEBUG: Request path: {request.url.path}")
+        else:
+            print(f"DEBUG: License key provided: {provided[:10]}... (length: {len(provided)})")
+            print(f"DEBUG: Expected license key: {LICENSE_KEY[:10]}... (length: {len(LICENSE_KEY)})")
+            print(f"DEBUG: Keys match: {provided == LICENSE_KEY}")
         
         if provided != LICENSE_KEY:
             return JSONResponse(
                 status_code=401, 
-                content={"detail": "Invalid or missing license key"}
+                content={
+                    "detail": "Invalid or missing license key",
+                    "hint": "Ensure X-License-Key header is included in the request",
+                    "received": provided[:10] + "..." if provided else None,
+                    "expected_length": len(LICENSE_KEY)
+                }
             )
+    
     return await call_next(request)
 
 def get_rag_system():
